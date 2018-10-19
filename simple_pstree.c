@@ -45,7 +45,7 @@ int main(int agrc, char** argv){
     nlh->nlmsg_pid = getpid(); /* self pid */ 
     nlh->nlmsg_flags = 0;
     /* Fill in the netlink message payload */ 
-    strcpy(NLMSG_DATA(nlh), "Hello World!");
+    strcpy(NLMSG_DATA(nlh), mode);
     
     iov.iov_base = (void *)nlh;
     iov.iov_len = nlh->nlmsg_len;
