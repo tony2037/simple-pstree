@@ -24,7 +24,7 @@ nlh= nlmsg_put(skb, pid, seq, 0, size, 0);
 nlh->nlmsg_flags = 0;
 data=NLMSG_DATA(nlh);
 memcpy(data, payload, size);
-NETLINK_CB(skb).pid = 0; /* from kernel */ 
+NETLINK_CB(skb).portid = 0; /* from kernel */ 
 NETLINK_CB(skb).dst_group = 0; /* unicast */ 
 ret=netlink_unicast(netlink_sock, skb, pid, MSG_DONTWAIT);
 if (ret <0) 
@@ -43,26 +43,38 @@ kfree_skb(skb);
 /* Receive messages from netlink socket. */ 
 static void udp_receive(struct sk_buff *skb) 
 { 
-u_int uid, pid, seq, sid;
+u_int pid, seq;
 void *data;
 struct nlmsghdr *nlh;
+
+if(!skb)
+	return;
  
 nlh = (struct nlmsghdr *)skb->data;
 pid = NETLINK_CREDS(skb)->pid;
-uid = (u_int)NETLINK_CREDS(skb)->uid;
-sid = NETLINK_CB(skb).nsid;
 seq = nlh->nlmsg_seq;
 data = NLMSG_DATA(nlh);
-printk("recv skb from user space uid:%d pid:%d seq:%d,sid:%d\n",uid,pid,seq,sid);
+printk("recv skb from user space pid:%d seq:%d\n",pid,seq);
 printk("data is :%s\n",(char *)data);
 udp_reply(pid,seq,data);
 return ;
 } 
  
 static int __init kudp_init(void) 
-{ 
-netlink_sock = netlink_kernel_create(&init_net, NETLINK_USERSOCK, 0, udp_receive, NULL, THIS_MODULE);
-return 0;
+{
+    struct netlink_kernel_cfg nkc;
+    nkc.groups = 0;
+    nkc.flags = 0;
+    nkc.input = udp_receive;
+    nkc.cb_mutex = NULL;
+    nkc.bind = NULL;
+    nkc.unbind = NULL;
+    nkc.compare = NULL;
+    netlink_sock = netlink_kernel_create(&init_net, NETLINK_USERSOCK, &nkc);
+    if(!netlink_sock)
+	    printk(KERN_ERR, "[netlink] create netlink socket error \n");
+    printk("initialize successfully\n");
+    return 0;
 } 
  
 static void __exit kudp_exit(void) 
