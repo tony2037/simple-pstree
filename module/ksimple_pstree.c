@@ -20,7 +20,7 @@ int ret;
 skb = alloc_skb(len, GFP_ATOMIC);
 if (!skb) 
 return;
-nlh= NLMSG_PUT(skb, pid, seq, 0, size);
+nlh= nlmsg_put(skb, pid, seq, 0, size, 0);
 nlh->nlmsg_flags = 0;
 data=NLMSG_DATA(nlh);
 memcpy(data, payload, size);
@@ -49,8 +49,8 @@ struct nlmsghdr *nlh;
  
 nlh = (struct nlmsghdr *)skb->data;
 pid = NETLINK_CREDS(skb)->pid;
-uid = NETLINK_CREDS(skb)->uid;
-sid = NETLINK_CB(skb).sid;
+uid = (u_int)NETLINK_CREDS(skb)->uid;
+sid = NETLINK_CB(skb).nsid;
 seq = nlh->nlmsg_seq;
 data = NLMSG_DATA(nlh);
 printk("recv skb from user space uid:%d pid:%d seq:%d,sid:%d\n",uid,pid,seq,sid);
@@ -61,7 +61,7 @@ return ;
  
 static int __init kudp_init(void) 
 { 
-netlink_sock = netlink_kernel_create(&init_net, NETLINK_USERSOCK, 0,udp_receive, NULL, THIS_MODULE);
+netlink_sock = netlink_kernel_create(&init_net, NETLINK_USERSOCK, 0, udp_receive, NULL, THIS_MODULE);
 return 0;
 } 
  
