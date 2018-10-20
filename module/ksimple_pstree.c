@@ -60,9 +60,17 @@ return ;
 } 
  
 static int __init kudp_init(void) 
-{ 
-netlink_sock = netlink_kernel_create(&init_net, NETLINK_USERSOCK, 0,udp_receive, NULL, THIS_MODULE);
-return 0;
+{
+    struct netlink_kernel_cfg nkc;
+    nkc.groups = 0;
+    nkc.flags = 0;
+    nkc.input = udp_receive;
+    nkc.cb_mutex = NULL;
+    nkc.bind = NULL;
+    nkc.unbind = NULL;
+    nkc.compare = NULL;
+    netlink_sock = netlink_kernel_create(&init_net, NETLINK_TEST, &nkc);
+    return 0;
 } 
  
 static void __exit kudp_exit(void) 
