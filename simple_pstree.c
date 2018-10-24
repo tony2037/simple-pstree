@@ -1,3 +1,5 @@
+#include <unistd.h>
+#include <stdlib.h>
 #include <stdio.h> 
 #include <string.h> 
 #include <malloc.h> 
@@ -10,8 +12,8 @@
 int main(int agrc, char** argv){
     char* opt = argv[1];
     char* pid = argv[2];
-    char* mode;
-    if(mode = malloc(strlen(opt)+strlen(pid)+1)) {
+    char *mode = NULL;
+    if((mode = (char *)malloc(strlen(opt)+strlen(pid)+1))) {
         mode[0] = '\0';
         strcat(mode, opt);
         strcat(mode, pid);
@@ -32,7 +34,7 @@ int main(int agrc, char** argv){
     src_addr.nl_family = AF_NETLINK;
     src_addr.nl_pid = getpid(); /* self pid */ 
     src_addr.nl_groups = 0; /* not in mcast groups */ 
-    bind(sock_fd, (struct sockaddr*)&src_addr,sizeof(src_addr));
+    printf("%d",bind(sock_fd, (struct sockaddr*)&src_addr, sizeof(struct sockaddr)));
     
     memset(&dest_addr, 0, sizeof(dest_addr));
     dest_addr.nl_family = AF_NETLINK;
@@ -40,12 +42,14 @@ int main(int agrc, char** argv){
     dest_addr.nl_groups = 0; /* unicast */ 
     
     nlh=(struct nlmsghdr *)malloc(NLMSG_SPACE(MAX_PAYLOAD));
+
+    memset(nlh, 0, sizeof(struct nlmsghdr));
     /* Fill the netlink message header */ 
     nlh->nlmsg_len = NLMSG_SPACE(MAX_PAYLOAD);
     nlh->nlmsg_pid = getpid(); /* self pid */ 
     nlh->nlmsg_flags = 0;
     /* Fill in the netlink message payload */ 
-    strcpy(NLMSG_DATA(nlh), mode);
+    strcpy(NLMSG_DATA(nlh), "123");
     
     iov.iov_base = (void *)nlh;
     iov.iov_len = nlh->nlmsg_len;
@@ -54,14 +58,18 @@ int main(int agrc, char** argv){
     msg.msg_iov = &iov;
     msg.msg_iovlen = 1;
     
-    sendmsg(sock_fd, &msg, 0);
+   int send_result = sendmsg(sock_fd, &msg, 0);
+   if (send_result != 0) {
+   	perror("sendmsg");
+   }
+   printf("sendmsg result: %d\n", send_result);
     
     printf("Waiting for message from kernel\n");
     
     /* Read message from kernel */ 
     recvmsg(sock_fd, &msg, 0);
     
-    printf("Received message payload: %s\n",NLMSG_DATA(msg.msg_iov->iov_base));
+    printf("Received message payload: %s\n", (char *)NLMSG_DATA(msg.msg_iov->iov_base));
     close(sock_fd);
     return 0; 
 }
