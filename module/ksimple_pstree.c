@@ -22,24 +22,39 @@ static struct task_struct *get_task_from_pid(int nr){
     return p;
 }
 
+static void put_in_result(char *result, char *pid_name, int pid, int spaces_num){
+    char pid_char[6] = "";
+    sprintf(pid_char, "%d", pid);
+    while(spaces_num--)    
+        strcat(result, "    ");
+    strcat(result, pid_name);
+    strcat(result, "(");
+    strcat(result, pid_char);
+    strcat(result, ")");
+}
+
 static void parse_task_children(struct sk_buff *skb, struct task_struct *p){
     // task_pid_nr(struct task_struct *tsk) to get pid
     // char *get_task_comm(char *buf, struct task_struct *tsk) to get name
-    char *payload;
+    char payload[512] = "";
     struct list_head *ptr, *children_list;
     struct task_struct *entry;
     int tmp_pid;
     //char *tmp_name, *tmp_pid_char;
     char tmp_name[TASK_COMM_LEN] = "";
     char tmp_pid_char[10] = "";
+
+    put_in_result(payload, p->comm, task_pid_nr(p), 0);
+    printk("%s", payload);
     children_list = &(p->children);
+    printk("Current process: %s(%d)", p->comm, task_pid_nr(p));
     list_for_each(ptr, children_list){
-	printk("loop");
-        entry = list_entry(ptr, struct task_struct, children);
+        entry = list_entry(ptr, struct task_struct, sibling);
         tmp_pid = task_pid_nr(entry);
 	sprintf(tmp_pid_char, "%d", tmp_pid);
-	get_task_comm(tmp_name, entry);
-	printk("Process name: %s(%s)", tmp_name, tmp_pid_char);
+	//get_task_comm(tmp_name, entry);
+	memcpy(tmp_name, entry->comm, sizeof(entry->comm));
+	printk("Process name: %s(%s)", entry->comm, tmp_pid_char);
     }
 }
 

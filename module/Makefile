@@ -12,3 +12,4 @@ ins:
 	sudo insmod $(MODULE_NAME).ko
 rm:
 	sudo rmmod $(MODULE_NAME)
+	sudo dmesg -C
