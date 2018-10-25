@@ -22,7 +22,7 @@ static struct task_struct *get_task_from_pid(int nr){
     return p;
 }
 
-static void put_in_result(char *result, char *pid_name, int pid, int spaces_num){
+void put_in_result(char *result, char *pid_name, int pid, int spaces_num){
     char pid_char[6] = "";
     sprintf(pid_char, "%d", pid);
     while(spaces_num--)    
@@ -33,16 +33,14 @@ static void put_in_result(char *result, char *pid_name, int pid, int spaces_num)
     strcat(result, ")");
 }
 
-static void parse_task_children(struct sk_buff *skb, struct task_struct *p){
+static void parse_task_children(void *data, struct task_struct *p){
     // task_pid_nr(struct task_struct *tsk) to get pid
     // char *get_task_comm(char *buf, struct task_struct *tsk) to get name
-    char payload[512] = "";
+    char payload[2048] = "";
     struct list_head *ptr, *children_list;
     struct task_struct *entry;
-    int tmp_pid;
     //char *tmp_name, *tmp_pid_char;
-    char tmp_name[TASK_COMM_LEN] = "";
-    char tmp_pid_char[10] = "";
+    //char tmp_name[TASK_COMM_LEN] = "";
 
     put_in_result(payload, p->comm, task_pid_nr(p), 0);
     printk("%s", payload);
@@ -50,12 +48,15 @@ static void parse_task_children(struct sk_buff *skb, struct task_struct *p){
     printk("Current process: %s(%d)", p->comm, task_pid_nr(p));
     list_for_each(ptr, children_list){
         entry = list_entry(ptr, struct task_struct, sibling);
-        tmp_pid = task_pid_nr(entry);
-	sprintf(tmp_pid_char, "%d", tmp_pid);
+	put_in_result(payload, entry->comm, task_pid_nr(entry), 1);
+        //tmp_pid = task_pid_nr(entry);
+	//sprintf(tmp_pid_char, "%d", tmp_pid);
 	//get_task_comm(tmp_name, entry);
-	memcpy(tmp_name, entry->comm, sizeof(entry->comm));
-	printk("Process name: %s(%s)", entry->comm, tmp_pid_char);
+	//memcpy(tmp_name, entry->comm, sizeof(entry->comm));
+	printk("Process name: %s", entry->comm);
     }
+
+    data = payload;
 }
 
 
@@ -73,7 +74,8 @@ static void udp_reply(int pid,int seq,void *payload)
 	nr = pid; // default pid to be dealed with is the pid of user app
 	p = get_task_from_pid(1);
 
-        parse_task_children(skb, p);
+        parse_task_children(payload, p);
+
 
 	skb = alloc_skb(len, GFP_ATOMIC);
 	if (!skb) 
