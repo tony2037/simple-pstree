@@ -5,9 +5,22 @@
 #include <net/netlink.h> 
 #include <linux/skbuff.h> 
 #include <linux/string.h>
+#include <linux/pid.h>
+#include <linux/sched.h>
  
  
 static struct sock *netlink_sock;
+
+static struct task_struct *get_task_from_pid(int nr){
+    struct pid *kpid;
+    struct task_struct *p;
+    kpid = find_get_pid(nr);
+    p = pid_task(kpid, PIDTYPE_PID);
+    if(p == NULL){
+        printk("pid_task error");
+    }
+    return p;
+}
 
 
 static void udp_reply(int pid,int seq,void *payload) 
@@ -18,7 +31,9 @@ static void udp_reply(int pid,int seq,void *payload)
 	int len = NLMSG_SPACE(size);
 	void *data;
 	int ret;
-	 
+        int nr; // pid number to be dealed with	
+
+	nr = (int)pid; // default pid to be dealed with is the pid of user app
 	skb = alloc_skb(len, GFP_ATOMIC);
 	if (!skb) 
 	return;
@@ -27,7 +42,7 @@ static void udp_reply(int pid,int seq,void *payload)
 	data=NLMSG_DATA(nlh);
 	memcpy(data, payload, size);
 	NETLINK_CB(skb).portid = 0; /* from kernel */ 
-	NETLINK_CB(skb).dst_group = 0; /* unicast */ 
+	NETLINK_CB(skb).dst_group = 0; /* unicast */
 	ret=netlink_unicast(netlink_sock, skb, pid, MSG_DONTWAIT);
 	if (ret <0) 
 	{ 
@@ -44,7 +59,8 @@ static void udp_reply(int pid,int seq,void *payload)
  
 /* Receive messages from netlink socket. */ 
 static void udp_receive(struct sk_buff *skb) 
-{ 
+{
+
 	u_int pid, seq;
 	void *data;
 	char str[100];
@@ -62,29 +78,26 @@ static void udp_receive(struct sk_buff *skb)
 	seq = nlh->nlmsg_seq;
 	data = NLMSG_DATA(nlh);
 	printk("recv skb from user space pid:%d seq:%d\n",pid,seq);
-	printk("data is :%s\n", str);
+	printk("data is :%s\n", (char *)data);
+
+
 	udp_reply(pid,seq,data);
 	return ;
 } 
  
 static int __init kudp_init(void) 
 {
-    struct netlink_kernel_cfg nkc;
-
-    nkc.groups = 0;
-    nkc.flags = 0;
-    nkc.input = udp_receive;
-    nkc.cb_mutex = NULL;
-    nkc.bind = NULL;
-    nkc.unbind = NULL;
-    nkc.compare = NULL;
-    printk("group:%d flags:%d input:%x mutex:%x %x %x %x", nkc.groups, nkc.flags, nkc.input, nkc.cb_mutex, nkc.bind, nkc.unbind, nkc.compare);
+    struct task_struct *p;
+    struct netlink_kernel_cfg nkc = {
+    .input = udp_receive
+    };
     netlink_sock = netlink_kernel_create(&init_net, NETLINK_USERSOCK, &nkc);
     if(!netlink_sock)
 	    printk(KERN_WARNING "[netlink] create netlink socket error \n");
    
 	  
-   printk("initialize successfully\n");
+    printk("initialize successfully\n");
+    p = get_task_from_pid(1);
     return 0;
 } 
  

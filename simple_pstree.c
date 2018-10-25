@@ -10,19 +10,10 @@
 
 
 int main(int agrc, char** argv){
-    char* opt = argv[1];
-    char* pid = argv[2];
-    char *mode = NULL;
-    if((mode = (char *)malloc(strlen(opt)+strlen(pid)+1))) {
-        mode[0] = '\0';
-        strcat(mode, opt);
-        strcat(mode, pid);
-        printf("%s\n", mode);
-    }
+    char *opt = argv[1];
 
-    printf("Option: %s\n", opt);
-    printf("PID: %s\n", pid);
-
+    printf("Option: %s  strlen:%d\n", opt, (int)strlen(opt));
+    
     struct sockaddr_nl src_addr, dest_addr;
     struct nlmsghdr *nlh = NULL;
     struct iovec iov;
@@ -48,8 +39,9 @@ int main(int agrc, char** argv){
     nlh->nlmsg_len = NLMSG_SPACE(MAX_PAYLOAD);
     nlh->nlmsg_pid = getpid(); /* self pid */ 
     nlh->nlmsg_flags = 0;
-    /* Fill in the netlink message payload */ 
-    strcpy(NLMSG_DATA(nlh), "123");
+    /* Fill in the netlink message payload */
+    //strcpy(NLMSG_DATA(nlh), opt);
+    memcpy(NLMSG_DATA(nlh), opt, strlen(opt));
     
     iov.iov_base = (void *)nlh;
     iov.iov_len = nlh->nlmsg_len;
