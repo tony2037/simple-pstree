@@ -1,5 +1,5 @@
 CC := gcc
-override CFLAGS += -O3 -Wall -g
+override CFLAGS += -Wall -g
 
 SOURCE := simple_pstree.c
 BINARY := simple-pstree

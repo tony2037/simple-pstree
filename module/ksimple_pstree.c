@@ -29,10 +29,13 @@ static void parse_task_children(struct sk_buff *skb, struct task_struct *p){
     struct list_head *ptr, *children_list;
     struct task_struct *entry;
     int tmp_pid;
-    char *tmp_name, *tmp_pid_char;
-    children_list = &p->children;
+    //char *tmp_name, *tmp_pid_char;
+    char tmp_name[TASK_COMM_LEN] = "";
+    char tmp_pid_char[10] = "";
+    children_list = &(p->children);
     list_for_each(ptr, children_list){
-        entry = list_entry(&ptr, struct task_struct, children);
+	printk("loop");
+        entry = list_entry(ptr, struct task_struct, children);
         tmp_pid = task_pid_nr(entry);
 	sprintf(tmp_pid_char, "%d", tmp_pid);
 	get_task_comm(tmp_name, entry);
@@ -53,8 +56,10 @@ static void udp_reply(int pid,int seq,void *payload)
         struct task_struct *p;
 
 	nr = pid; // default pid to be dealed with is the pid of user app
-	p = get_task_from_pid(nr);
-	
+	p = get_task_from_pid(1);
+
+        parse_task_children(skb, p);
+
 	skb = alloc_skb(len, GFP_ATOMIC);
 	if (!skb) 
 	return;
@@ -71,7 +76,7 @@ static void udp_reply(int pid,int seq,void *payload)
 	return;
 	} 
 	return;
-	 
+	
 	//nlmsg_failure: /* Used by NLMSG_PUT */ 
 	if (skb) 
 	kfree_skb(skb);
@@ -100,7 +105,6 @@ static void udp_receive(struct sk_buff *skb)
 	data = NLMSG_DATA(nlh);
 	printk("recv skb from user space pid:%d seq:%d\n",pid,seq);
 	printk("data is :%s\n", (char *)data);
-
 
 	udp_reply(pid,seq,data);
 	return ;
