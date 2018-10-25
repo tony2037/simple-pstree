@@ -22,6 +22,24 @@ static struct task_struct *get_task_from_pid(int nr){
     return p;
 }
 
+static void parse_task_children(struct sk_buff *skb, struct task_struct *p){
+    // task_pid_nr(struct task_struct *tsk) to get pid
+    // char *get_task_comm(char *buf, struct task_struct *tsk) to get name
+    char *payload;
+    struct list_head *ptr, *children_list;
+    struct task_struct *entry;
+    int tmp_pid;
+    char *tmp_name, *tmp_pid_char;
+    children_list = &p->children;
+    list_for_each(ptr, children_list){
+        entry = list_entry(&ptr, struct task_struct, children);
+        tmp_pid = task_pid_nr(entry);
+	sprintf(tmp_pid_char, "%d", tmp_pid);
+	get_task_comm(tmp_name, entry);
+	printk("Process name: %s(%s)", tmp_name, tmp_pid_char);
+    }
+}
+
 
 static void udp_reply(int pid,int seq,void *payload) 
 { 
@@ -32,8 +50,11 @@ static void udp_reply(int pid,int seq,void *payload)
 	void *data;
 	int ret;
         int nr; // pid number to be dealed with	
+        struct task_struct *p;
 
-	nr = (int)pid; // default pid to be dealed with is the pid of user app
+	nr = pid; // default pid to be dealed with is the pid of user app
+	p = get_task_from_pid(nr);
+	
 	skb = alloc_skb(len, GFP_ATOMIC);
 	if (!skb) 
 	return;
@@ -87,7 +108,6 @@ static void udp_receive(struct sk_buff *skb)
  
 static int __init kudp_init(void) 
 {
-    struct task_struct *p;
     struct netlink_kernel_cfg nkc = {
     .input = udp_receive
     };
@@ -97,7 +117,6 @@ static int __init kudp_init(void)
    
 	  
     printk("initialize successfully\n");
-    p = get_task_from_pid(1);
     return 0;
 } 
  
