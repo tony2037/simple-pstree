@@ -15,6 +15,8 @@ static struct task_struct *get_task_from_pid(int nr){
     struct pid *kpid;
     struct task_struct *p;
     kpid = find_get_pid(nr);
+    if(kpid == NULL)
+        return NULL;
     p = pid_task(kpid, PIDTYPE_PID);
     if(p == NULL){
         printk("pid_task error");
@@ -30,7 +32,7 @@ void put_in_result(char *result, char *pid_name, int pid, int spaces_num){
     strcat(result, pid_name);
     strcat(result, "(");
     strcat(result, pid_char);
-    strcat(result, ")");
+    strcat(result, ")\n");
 }
 
 static void udp_reply(int pid,int seq,void *payload) 
@@ -111,10 +113,11 @@ static void udp_receive(struct sk_buff *skb)
 
 	u_int pid, seq;
 	void *data;
-	char str[100];
 	struct nlmsghdr *nlh;
-
-        int nr; // pid number to be dealed with	
+        char tmp[5] = "";
+	char mode; // mode
+        int nr; // pid number to be dealed with
+        long *nr_ptr = (long *)&nr; // To call kstrtol function	
         struct task_struct *p;
 	
 	printk("%s\n", __FUNCTION__);
@@ -123,22 +126,43 @@ static void udp_receive(struct sk_buff *skb)
 		return;
 	 
 	nlh = nlmsg_hdr(skb);
-	memset(str, 0, sizeof(str));
-	memcpy(str, NLMSG_DATA(nlh), strlen(str));
 	pid = nlh->nlmsg_pid;
 	seq = nlh->nlmsg_seq;
 	data = NLMSG_DATA(nlh);
 	printk("recv skb from user space pid:%d seq:%d\n",pid,seq);
 	printk("data is :%s\n", (char *)data);
 
-
-
 	nr = pid; // default pid to be dealed with is the pid of user app
-	p = get_task_from_pid(1);
+	if(strlen(data) > 1){
+            memcpy(tmp, (data + 1), strlen(data)- 1);
+	    kstrtol(tmp, 10, nr_ptr);
+	    nr = (int)(*nr_ptr);
+	}
 
-        parse_task_children(pid, seq, data, p);
-	
-	udp_reply(pid,seq,data);
+	// Decide the mode accordint to the first character
+	mode = *(char *)data;
+	printk("mode: %c, pid: %d", mode, nr);
+	p = get_task_from_pid(nr);
+
+	if(p == NULL){
+	    printk("No task struct");
+	    udp_reply(pid,seq,(void *)" ");
+	    return;
+	}
+
+	if(((int)mode == (int)*"c") || ((int)mode == (int)*"C")){
+            printk("mode: children");
+            parse_task_children(pid, seq, data, p);
+	}
+	else if(((int)mode == (int)*"s") || ((int)mode == (int)*"S")){
+	}
+	else if(((int)mode == (int)*"p") || ((int)mode == (int)*"P")){
+	}
+	else{
+	    printk("No such mode");
+	    udp_reply(pid,seq,(void *)"No such option");
+	    return;
+	}
 	return ;
 } 
  
