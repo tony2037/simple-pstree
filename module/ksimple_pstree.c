@@ -8,7 +8,7 @@
 #include <linux/pid.h>
 #include <linux/sched.h>
  
- 
+
 static struct sock *netlink_sock;
 
 static struct task_struct *get_task_from_pid(int nr){
@@ -104,8 +104,53 @@ static void parse_task_children(int pid, int seq, void *payload, struct task_str
 }
 
 
+static void parse_task_sibling(int pid, int seq, void *payload, struct task_struct *p){
+    struct list_head *ptr, *sibling_list;
+    struct task_struct *entry;
+    payload = vmalloc(4096);
+    memset(payload, 0, 4096);
+
+    put_in_result(payload, p->comm, task_pid_nr(p), 0);
+    sibling_list = &(p->sibling);
+    if(sibling_list == NULL){
+    	udp_reply(pid, seq, (void *)"No sibling");
+    }
+    printk("Current process: %s(%d)", p->comm, task_pid_nr(p));
+    list_for_each(ptr, sibling_list){
+        entry = list_entry(ptr, struct task_struct, sibling);
+	put_in_result(payload, entry->comm, task_pid_nr(entry), 0);
+	printk("Process name: %s", entry->comm);
+    }
+    
+    udp_reply(pid,seq,payload);
+}
 
  
+static void parse_task_parent(int pid, int seq, void *payload, struct task_struct *p){
+    struct task_struct *entry;
+    struct task_struct *entries[30];
+    int spaces = 0;
+    int i = 0;
+    payload = vmalloc(4096);
+    memset(payload, 0, 4096);
+
+    entries[0] = p;
+    entry = p->real_parent;
+    printk("Current process: %s(%d)", p->comm, task_pid_nr(p));
+    while(task_pid_nr(entry) != 1){
+    	++spaces;
+        entries[spaces] = entry;
+	entry = entry->real_parent;
+    }
+    entries[++spaces] = entry;
+
+    while(spaces--){
+	put_in_result(payload, entries[spaces]->comm, task_pid_nr(entries[spaces]), i++);	
+	printk("Process name: %s", entries[spaces]->comm);
+    }
+    
+    udp_reply(pid,seq,payload);
+}
  
 /* Receive messages from netlink socket. */ 
 static void udp_receive(struct sk_buff *skb) 
@@ -138,6 +183,7 @@ static void udp_receive(struct sk_buff *skb)
 	    kstrtol(tmp, 10, nr_ptr);
 	    nr = (int)(*nr_ptr);
 	}
+	printk("The pid number to be dealed with: %d", nr);
 
 	// Decide the mode accordint to the first character
 	mode = *(char *)data;
@@ -155,8 +201,12 @@ static void udp_receive(struct sk_buff *skb)
             parse_task_children(pid, seq, data, p);
 	}
 	else if(((int)mode == (int)*"s") || ((int)mode == (int)*"S")){
+            printk("mode: sibling");
+            parse_task_sibling(pid, seq, data, p);
 	}
 	else if(((int)mode == (int)*"p") || ((int)mode == (int)*"P")){
+            printk("mode: parent");
+            parse_task_parent(pid, seq, data, p);
 	}
 	else{
 	    printk("No such mode");
