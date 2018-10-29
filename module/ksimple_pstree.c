@@ -118,8 +118,13 @@ static void parse_task_sibling(int pid, int seq, void *payload, struct task_stru
     printk("Current process: %s(%d)", p->comm, task_pid_nr(p));
     list_for_each(ptr, sibling_list){
         entry = list_entry(ptr, struct task_struct, sibling);
-	put_in_result(payload, entry->comm, task_pid_nr(entry), 0);
-	printk("Process name: %s", entry->comm);
+	printk("entry: %p", (void *)entry);
+	printk("entry sibling: %p", (void *)(&entry->sibling));
+	printk("ptr: %p", (void *)(ptr));
+	if((task_pid_nr(entry) != 0)){
+	    put_in_result(payload, entry->comm, task_pid_nr(entry), 0);
+	    printk("Process name: %s", entry->comm);
+	}
     }
     
     udp_reply(pid,seq,payload);
