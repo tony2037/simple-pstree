@@ -96,27 +96,8 @@ static void children_to_end(void *payload, struct task_struct *entry, int space)
 static void parse_task_children(int pid, int seq, void *payload, struct task_struct *p){
     // task_pid_nr(struct task_struct *tsk) to get pid
     // char *get_task_comm(char *buf, struct task_struct *tsk) to get name
-    struct list_head *ptr, *children_list;
-    struct task_struct *entry;
-    //char *tmp_name, *tmp_pid_char;
-    //char tmp_name[TASK_COMM_LEN] = "";
     payload = vmalloc(4096);
     memset(payload, 0, 4096);
-/*
-    put_in_result(payload, p->comm, task_pid_nr(p), 0);
-    printk("%s", (char *)payload);
-    children_list = &(p->children);
-    printk("Current process: %s(%d)", p->comm, task_pid_nr(p));
-    list_for_each(ptr, children_list){
-        entry = list_entry(ptr, struct task_struct, sibling);
-	put_in_result(payload, entry->comm, task_pid_nr(entry), 1);
-        //tmp_pid = task_pid_nr(entry);
-	//sprintf(tmp_pid_char, "%d", tmp_pid);
-	//get_task_comm(tmp_name, entry);
-	//memcpy(tmp_name, entry->comm, sizeof(entry->comm));
-	printk("Process name: %s", entry->comm);
-    }
- */
     children_to_end(payload, p, 0);   
     udp_reply(pid,seq,payload);
 }

@@ -66,7 +66,7 @@ int main(int agrc, char** argv){
     recvmsg(sock_fd, &msg, 0);
     
 
-    printf("Received message payload: %s\n", (char *)NLMSG_DATA(msg.msg_iov->iov_base));
+    printf("Received message payload: \n%s\n", (char *)NLMSG_DATA(msg.msg_iov->iov_base));
     close(sock_fd);
     free(opt);
     return 0; 
