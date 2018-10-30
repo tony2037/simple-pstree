@@ -75,7 +75,24 @@ static void udp_reply(int pid,int seq,void *payload)
 	//nlmsg_failure: /* Used by NLMSG_PUT */ 
 	if (skb) 
 	kfree_skb(skb);
-} 
+}
+
+static void children_to_end(void *payload, struct task_struct *entry, int space){
+    struct list_head *ptr;
+    put_in_result(payload, entry->comm, task_pid_nr(entry), space);
+    printk("Process name: %s", entry->comm);
+    if(!list_empty(&entry->children)){
+	printk("Have children");
+        list_for_each(ptr, &(entry->children)){
+            entry = list_entry(ptr, struct task_struct, sibling);
+	    if(task_pid_nr(entry) == 0)
+                return;
+	    children_to_end(payload, entry, space+1);
+    } 
+    }
+    return;
+}
+
 static void parse_task_children(int pid, int seq, void *payload, struct task_struct *p){
     // task_pid_nr(struct task_struct *tsk) to get pid
     // char *get_task_comm(char *buf, struct task_struct *tsk) to get name
@@ -83,9 +100,9 @@ static void parse_task_children(int pid, int seq, void *payload, struct task_str
     struct task_struct *entry;
     //char *tmp_name, *tmp_pid_char;
     //char tmp_name[TASK_COMM_LEN] = "";
-    payload = vmalloc(2048);
-    memset(payload, 0, 2048);
-
+    payload = vmalloc(4096);
+    memset(payload, 0, 4096);
+/*
     put_in_result(payload, p->comm, task_pid_nr(p), 0);
     printk("%s", (char *)payload);
     children_list = &(p->children);
@@ -99,9 +116,12 @@ static void parse_task_children(int pid, int seq, void *payload, struct task_str
 	//memcpy(tmp_name, entry->comm, sizeof(entry->comm));
 	printk("Process name: %s", entry->comm);
     }
-    
+ */
+    children_to_end(payload, p, 0);   
     udp_reply(pid,seq,payload);
 }
+
+
 
 
 static void parse_task_sibling(int pid, int seq, void *payload, struct task_struct *p){
